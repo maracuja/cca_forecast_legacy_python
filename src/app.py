@@ -3,7 +3,13 @@ from collections import defaultdict
 import requests
 
 
-def main(weather_data: dict) -> dict:
+def get_data(url: str) -> dict:
+    response = requests.get(url)
+    response.raise_for_status()
+    return response.json()
+
+
+def calc_summaries(weather_data: dict) -> dict:
     grouped_by_day = defaultdict(list)
     summaries = {}
 
@@ -33,25 +39,30 @@ def main(weather_data: dict) -> dict:
         summaries[key] = {
             "morning_average_temperature": "Insufficient forecast data" if not morning_temps else str(round(sum(morning_temps) / len(morning_temps))),
             "morning_chance_of_rain": "Insufficient forecast data" if not morning_rains else str(round(sum(morning_rains) / len(morning_rains), 2)),
+            "afternoon_average_temperature": "Insufficient forecast data" if not afternoon_temps else str(round(sum(afternoon_temps) / len(afternoon_temps))),
+            "afternoon_chance_of_rain": "Insufficient forecast data" if not afternoon_rains else str(round(sum(afternoon_rains) / len(afternoon_rains), 2)),
+            "high_temperature": str(max(all_temps)),
+            "low_temperature": str(min(all_temps))
         }
-
-        summary = ["Day: " + key + "\n\n",
-                   "Morning Average Temperature: ", summaries[key]["morning_average_temperature"] + "\n",
-                   "Morning Chance Of Rain: ", summaries[key]["morning_chance_of_rain"] + "\n",
-                   "Afternoon Average Temperature: ", "Insufficient forecast data" if not afternoon_temps else str(round(
-                       sum(afternoon_temps) / len(afternoon_temps))) + "\n",
-                   "Afternoon Chance Of Rain: ", "Insufficient forecast data" if not afternoon_rains else str(round(
-                       sum(afternoon_rains) / len(afternoon_rains), 2)) + "\n",
-                   "High Temperature: " + str(max(all_temps)) + "\n",
-                   "Low Temperature: " + str(min(all_temps)) + "\n"]
-
-        print("".join(summary))
 
     return summaries
 
 
+def main():
+    weather_data = get_data("https://e75urw7oieiszbzws4gevjwvze0baaet.lambda-url.eu-west-2.on.aws/")
+    summaries = calc_summaries(weather_data)
+
+    for day, summary in summaries.items():
+        summary = ["Day: " + day + "\n\n",
+                   "Morning Average Temperature: ", summary["morning_average_temperature"] + "\n",
+                   "Morning Chance Of Rain: ", summary["morning_chance_of_rain"] + "\n",
+                   "Afternoon Average Temperature: ", summary["afternoon_average_temperature"] + "\n",
+                   "Afternoon Chance Of Rain: ", summary["afternoon_chance_of_rain"] + "\n",
+                   "High Temperature: " + summary["high_temperature"] + "\n",
+                   "Low Temperature: " + summary["low_temperature"] + "\n"]
+
+        print("".join(summary))
+
+
 if __name__ == "__main__":
-    url = "https://e75urw7oieiszbzws4gevjwvze0baaet.lambda-url.eu-west-2.on.aws/"
-    response = requests.get(url)
-    response.raise_for_status()
-    main(response.json())
+    main()
