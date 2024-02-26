@@ -3,21 +3,16 @@ from collections import defaultdict
 import requests
 
 
-def main():
-    url = "https://e75urw7oieiszbzws4gevjwvze0baaet.lambda-url.eu-west-2.on.aws/"
-
-    response = requests.get(url)
-    response.raise_for_status()
-
-    weather_data = response.json()
-
+def main(weather_data: dict) -> dict:
     grouped_by_day = defaultdict(list)
     summaries = {}
+
     # Group entries by day
     for entry in weather_data:
         entry_time = datetime.fromisoformat(entry["date_time"].replace('Z', '+00:00'))
         day_key = entry_time.date()
         grouped_by_day[day_key].append(entry)
+
     # Process each day
     for day, entries in grouped_by_day.items():
         morning_temps, morning_rains, afternoon_temps, afternoon_rains = [], [], [], []
@@ -34,11 +29,15 @@ def main():
                 afternoon_temps.append(entry["average_temperature"])
                 afternoon_rains.append(entry["probability_of_rain"])
 
-        summary = ["Day: " + day.strftime("%A %B %d").replace(" 0", " ") + "\n\n",
-                   "Morning Average Temperature: ", "Insufficient forecast data" if not morning_temps else str(round(
-                       sum(morning_temps) / len(morning_temps))) + "\n",
-                   "Morning Chance Of Rain: ", "Insufficient forecast data" if not morning_rains else str(round(
-                       sum(morning_rains) / len(morning_rains), 2)) + "\n",
+        key = day.strftime("%A %B %d").replace(" 0", " ")
+        summaries[key] = {
+            "morning_average_temperature": "Insufficient forecast data" if not morning_temps else str(round(sum(morning_temps) / len(morning_temps))),
+            "morning_chance_of_rain": "Insufficient forecast data" if not morning_rains else str(round(sum(morning_rains) / len(morning_rains), 2)),
+        }
+
+        summary = ["Day: " + key + "\n\n",
+                   "Morning Average Temperature: ", summaries[key]["morning_average_temperature"] + "\n",
+                   "Morning Chance Of Rain: ", summaries[key]["morning_chance_of_rain"] + "\n",
                    "Afternoon Average Temperature: ", "Insufficient forecast data" if not afternoon_temps else str(round(
                        sum(afternoon_temps) / len(afternoon_temps))) + "\n",
                    "Afternoon Chance Of Rain: ", "Insufficient forecast data" if not afternoon_rains else str(round(
@@ -48,6 +47,11 @@ def main():
 
         print("".join(summary))
 
+    return summaries
+
 
 if __name__ == "__main__":
-    main()
+    url = "https://e75urw7oieiszbzws4gevjwvze0baaet.lambda-url.eu-west-2.on.aws/"
+    response = requests.get(url)
+    response.raise_for_status()
+    main(response.json())
